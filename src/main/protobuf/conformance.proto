@@ -63,6 +63,14 @@ message Requirement {
     // The banned HTML tag (lowercase).
     repeated string tag = 1;
 
+    message Attribute {
+      string key = 1;
+      string content = 2;
+    }
+    // If provided, then the check will pass if any of these attributes exist on
+    // the HTML tag
+    repeated Attribute exempt_attribute = 4;
+
     // NOTE: All the checks below are considered separately. So if both
     // `when_attribute_possibly_present` and `when_attribute_possibly_missing`
     // is set, then a tag is banned if any attribute in

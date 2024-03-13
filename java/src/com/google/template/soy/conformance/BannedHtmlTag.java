@@ -33,11 +33,13 @@ final class BannedHtmlTag extends Rule<HtmlOpenTagNode> {
   private final ImmutableSet<String> bannedTagNames;
   private final ImmutableSet<String> bannedPossiblyPresentAttributes;
   private final ImmutableSet<String> bannedPossiblyMissingAttributes;
+  private final ImmutableSet<Requirement.BannedHtmlTag.Attribute> exemptAttributes;
 
   BannedHtmlTag(
       Collection<String> bannedTagNames,
       Collection<String> bannedPossiblyPresentAttributes,
       Collection<String> bannedPossiblyMissingAttributes,
+      Collection<Requirement.BannedHtmlTag.Attribute> exemptAttributes,
       SoyErrorKind error) {
     super(error);
 
@@ -50,6 +52,8 @@ final class BannedHtmlTag extends Rule<HtmlOpenTagNode> {
 
     this.bannedPossiblyMissingAttributes =
         bannedPossiblyMissingAttributes.stream().map(Ascii::toLowerCase).collect(toImmutableSet());
+
+    this.exemptAttributes = ImmutableSet.copyOf(exemptAttributes);
   }
 
   @Override
@@ -64,6 +68,23 @@ final class BannedHtmlTag extends Rule<HtmlOpenTagNode> {
     if (!isBannedTag) {
       return false;
     }
+
+    for (Requirement.BannedHtmlTag.Attribute attr : exemptAttributes) {
+      boolean isExempted =
+          SoyTreeUtils.allNodesOfType(node, HtmlAttributeNode.class)
+              .anyMatch(
+                  nodeAttr -> {
+                    boolean matchesKey = nodeAttr.definitelyMatchesAttributeName(attr.getKey());
+                    boolean matchesContent =
+                        (nodeAttr.getStaticContent() == null || attr.getContent().isEmpty())
+                            || nodeAttr.getStaticContent().equals(attr.getContent());
+                    return matchesKey && matchesContent;
+                  });
+      if (isExempted) {
+        return false;
+      }
+    }
+
     if (bannedPossiblyPresentAttributes.isEmpty() && bannedPossiblyMissingAttributes.isEmpty()) {
       return true;
     }
